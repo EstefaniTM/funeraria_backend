@@ -135,5 +135,6 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'EXCEPTION_HANDLER': 'api.exceptions.custom_exception_handler',
 }
 
