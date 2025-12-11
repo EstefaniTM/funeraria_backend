@@ -77,31 +77,36 @@ jobs:
         ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
     - name: Deploy to VPS
+      env:
+        VPS_USER: ${{ secrets.VPS_USERNAME }}
+        VPS_HOST: ${{ secrets.VPS_HOST }}
+        PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
+        VENV_PATH: ${{ secrets.VENV_PATH }}
       run: |
-        ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'DEPLOY'
-        set -e
-
-        echo '1. Actualizando código...'
-        cd ${{ secrets.PROJECT_PATH }}
-        git fetch origin
-        git reset --hard origin/main
-
-        echo '2. Activando entorno virtual...'
-        source ${{ secrets.VENV_PATH }}/bin/activate
-
-        echo '3. Instalando dependencias...'
-        cd funeraria
-        pip install -r requirements.txt
-
-        echo '4. Aplicando migraciones...'
-        python manage.py migrate --noinput
-
-        echo '5. Colectando archivos estáticos...'
-        python manage.py collectstatic --noinput --clear
-
-        echo '6. Reiniciando servicios...'
-        sudo systemctl restart gunicorn || true
-        sudo systemctl restart nginx || true
-
-        echo '✅ Despliegue completado'
-        DEPLOY
+        ssh $VPS_USER@$VPS_HOST "
+          set -e
+          
+          echo '1. Actualizando código...'
+          cd $PROJECT_PATH
+          git fetch origin
+          git reset --hard origin/main
+          
+          echo '2. Activando entorno virtual...'
+          source $VENV_PATH/bin/activate
+          
+          echo '3. Instalando dependencias...'
+          cd funeraria
+          pip install -r requirements.txt
+          
+          echo '4. Aplicando migraciones...'
+          python manage.py migrate --noinput
+          
+          echo '5. Colectando archivos estáticos...'
+          python manage.py collectstatic --noinput --clear
+          
+          echo '6. Reiniciando servicios...'
+          sudo systemctl restart gunicorn || true
+          sudo systemctl restart nginx || true
+          
+          echo '✅ Despliegue completado'
+        "
