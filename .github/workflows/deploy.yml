@@ -33,15 +33,6 @@ jobs:
       with:
         python-version: '3.12'
 
-    - name: Debug repo layout
-      run: |
-        echo "=== Estructura del repositorio ==="
-        pwd
-        ls -la
-        echo ""
-        echo "=== Contenido de ./funeraria ==="
-        ls -la ./funeraria || echo "directorio no encontrado"
-
     - name: Install dependencies
       working-directory: ./funeraria
       run: |
@@ -69,46 +60,30 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup SSH
-      run: |
-        mkdir -p ~/.ssh
-        printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
-
     - name: Deploy to VPS
       env:
-        VPS_USER: ${{ secrets.VPS_USERNAME }}
-        VPS_HOST: ${{ secrets.VPS_HOST }}
-        PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
-        VENV_PATH: ${{ secrets.VENV_PATH }}
+        VPS_HOST: ${{ vars.VPS_HOST }}
+        VPS_USER: ${{ vars.VPS_USERNAME }}
+        PROJECT_PATH: ${{ vars.PROJECT_PATH }}
+        VENV_PATH: ${{ vars.VENV_PATH }}
+        SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
       run: |
-        ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST bash << 'SCRIPT'
-        set -e
-        PROJECT_PATH="${1}"
-        VENV_PATH="${2}"
+        mkdir -p ~/.ssh
+        printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
         
-        echo '1. Actualizando código...'
-        cd "$PROJECT_PATH"
-        git fetch origin
-        git reset --hard origin/main
-        
-        echo '2. Activando entorno virtual...'
-        source "$VENV_PATH/bin/activate"
-        
-        echo '3. Instalando dependencias...'
-        cd funeraria
-        pip install -r requirements.txt
-        
-        echo '4. Aplicando migraciones...'
-        python manage.py migrate --noinput
-        
-        echo '5. Colectando archivos estáticos...'
-        python manage.py collectstatic --noinput --clear
-        
-        echo '6. Reiniciando servicios...'
-        sudo systemctl restart gunicorn || true
-        sudo systemctl restart nginx || true
-        
-        echo '✅ Despliegue completado'
-        SCRIPT "$PROJECT_PATH" "$VENV_PATH"
+        ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_HOST" "
+          set -e
+          cd $PROJECT_PATH
+          git fetch origin
+          git reset --hard origin/main
+          source $VENV_PATH/bin/activate
+          cd funeraria
+          pip install -r requirements.txt
+          python manage.py migrate --noinput
+          python manage.py collectstatic --noinput --clear
+          sudo systemctl restart gunicorn || true
+          sudo systemctl restart nginx || true
+          echo '✅ Despliegue completado'
+        "
