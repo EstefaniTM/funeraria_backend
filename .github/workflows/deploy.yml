@@ -77,17 +77,24 @@ jobs:
         ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
     - name: Deploy to VPS
+      env:
+        VPS_USER: ${{ secrets.VPS_USERNAME }}
+        VPS_HOST: ${{ secrets.VPS_HOST }}
+        PROJECT_PATH: ${{ secrets.PROJECT_PATH }}
+        VENV_PATH: ${{ secrets.VENV_PATH }}
       run: |
-        ssh ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'DEPLOY'
+        ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST bash << 'SCRIPT'
         set -e
+        PROJECT_PATH="${1}"
+        VENV_PATH="${2}"
         
         echo '1. Actualizando código...'
-        cd ${{ secrets.PROJECT_PATH }}
+        cd "$PROJECT_PATH"
         git fetch origin
         git reset --hard origin/main
         
         echo '2. Activando entorno virtual...'
-        source ${{ secrets.VENV_PATH }}/bin/activate
+        source "$VENV_PATH/bin/activate"
         
         echo '3. Instalando dependencias...'
         cd funeraria
@@ -104,4 +111,4 @@ jobs:
         sudo systemctl restart nginx || true
         
         echo '✅ Despliegue completado'
-        DEPLOY
+        SCRIPT "$PROJECT_PATH" "$VENV_PATH"
