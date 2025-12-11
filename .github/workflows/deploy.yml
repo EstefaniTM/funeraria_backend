@@ -80,7 +80,7 @@ jobs:
           git reset --hard origin/main
           source $VENV_PATH/bin/activate
           cd funeraria
-          pip install -r requirements.txt
+          pip install --break-system-packages -r requirements.txt
           python manage.py migrate --noinput
           python manage.py collectstatic --noinput --clear
           sudo systemctl restart gunicorn || true
