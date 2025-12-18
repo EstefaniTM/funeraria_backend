@@ -2,7 +2,7 @@
 
 API REST desarrollada con Django REST Framework para la gestión integral de servicios funerarios. Incluye gestión de clientes, servicios, vehículos, empleados, materiales, ubicaciones, servicios contratados y facturación.
 
-## Tabla de Contenidos
+## Tabla de Contenido
 
 - [Características](#características)
 - [Tecnologías](#tecnologías)
