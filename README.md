@@ -438,6 +438,155 @@ La API devuelve códigos de estado HTTP apropiados:
 }
 ```
 
+## Despliegue
+
+### Preparar para Producción
+
+#### 1. Configurar variables de entorno
+
+Crear un archivo `.env` en la raíz del proyecto:
+
+```env
+DEBUG=False
+SECRET_KEY=tu-clave-secreta-super-segura-cambiar-esto
+ALLOWED_HOSTS=tudominio.com,www.tudominio.com
+DB_ENGINE=django.db.backends.postgresql
+DB_NAME=funeraria_db
+DB_USER=usuario_db
+DB_PASSWORD=contraseña_segura
+DB_HOST=localhost
+DB_PORT=5432
+```
+
+#### 2. Instalar dependencias adicionales para producción
+
+```bash
+pip install gunicorn psycopg2-binary whitenoise
+pip freeze > requirements.txt
+```
+
+#### 3. Configurar servidor WSGI (Gunicorn)
+
+Crear archivo `wsgi.py` en la raíz (o usar el existente en `funeraria/wsgi.py`):
+
+```bash
+gunicorn funeraria.wsgi:application --bind 0.0.0.0:8000 --workers 4
+```
+
+#### 4. Configurar servidor web (Nginx)
+
+Crear archivo `/etc/nginx/sites-available/funeraria`:
+
+```nginx
+upstream funeraria_app {
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 80;
+    server_name tudominio.com www.tudominio.com;
+
+    # Redirigir HTTP a HTTPS
+    return 301 https://$server_name$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name tudominio.com www.tudominio.com;
+
+    # Certificados SSL (Let's Encrypt)
+    ssl_certificate /etc/letsencrypt/live/tudominio.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/tudominio.com/privkey.pem;
+
+    # Configuración SSL
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    client_max_body_size 10M;
+
+    location /static/ {
+        alias /home/usuario/funeraria_backend/funeraria/staticfiles/;
+    }
+
+    location /media/ {
+        alias /home/usuario/funeraria_backend/funeraria/media/;
+    }
+
+    location / {
+        proxy_pass http://funeraria_app;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Habilitar sitio:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/funeraria /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+#### 5. Configurar SSL con Let's Encrypt
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot certonly --nginx -d tudominio.com -d www.tudominio.com
+```
+
+#### 6. Recopilar archivos estáticos
+
+```bash
+cd funeraria
+python manage.py collectstatic --noinput
+```
+
+#### 7. Ejecutar migraciones en producción
+
+```bash
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+## Monitoreo y Mantenimiento
+
+#### Logs en producción
+
+```bash
+# Con Gunicorn
+tail -f /var/log/gunicorn.log
+
+# Con systemd
+sudo journalctl -u funeraria -n 100 -f
+```
+
+#### Backup de base de datos PostgreSQL
+
+```bash
+pg_dump -U usuario funeraria_db > backup_$(date +%Y%m%d_%H%M%S).sql
+```
+
+#### Restaurar backup
+
+```bash
+psql -U usuario funeraria_db < backup_20251220_120000.sql
+```
+
+#### Actualizar aplicación en producción
+
+```bash
+git pull origin main
+source venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+sudo systemctl restart funeraria
+```
+
 ## Testing
 
 ### Usando Postman

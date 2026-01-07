@@ -14,6 +14,6 @@ router.register(r'facturas', views.FacturaViewSet, basename='factura')
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('auth/login/', views.login, name='login'),
-    path('auth/registro/', views.registro, name='registro'),
+    path('auth/login', views.login, name='login'),
+    path('auth/registro', views.registro, name='registro'),
 ]
