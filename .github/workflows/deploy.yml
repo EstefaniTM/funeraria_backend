@@ -64,8 +64,6 @@ jobs:
       env:
         VPS_HOST: ${{ vars.VPS_HOST }}
         VPS_USER: ${{ vars.VPS_USERNAME }}
-        PROJECT_PATH: ${{ vars.PROJECT_PATH }}
-        VENV_PATH: ${{ vars.VENV_PATH }}
         SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
       run: |
         mkdir -p ~/.ssh
@@ -75,10 +73,10 @@ jobs:
         
         ssh -o StrictHostKeyChecking=no "$VPS_USER@$VPS_HOST" "
           set -e
-          cd $PROJECT_PATH
+          cd /root/funeraria_api/funeraria_backend
           git fetch origin
           git reset --hard origin/main
-          source $VENV_PATH/bin/activate
+          source /root/venv/bin/activate
           cd funeraria
           pip install --break-system-packages -r requirements.txt
           python3 manage.py migrate --noinput
